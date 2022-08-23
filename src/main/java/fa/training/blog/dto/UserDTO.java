@@ -1,16 +1,11 @@
-package fa.training.blog.entity;
+package fa.training.blog.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.validator.constraints.Length;
 
-import javax.persistence.*;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
-import java.util.Set;
 
-@Entity
-public class User {
-    @Id
+public class UserDTO {
     @Length(min = 3, max = 50)
     @NotBlank
     private String username;
@@ -18,27 +13,19 @@ public class User {
     @NotBlank
     private String password;
     @Email
+    @NotBlank
     private String email;
-    @Column(name = "first_name")
     @NotBlank
     private String firstName;
-    @Column(name = "last_name")
     @NotBlank
     private String lastName;
     @NotBlank
     private String role;
-    @OneToMany(mappedBy = "owner", cascade = CascadeType.REMOVE)
-    @JsonIgnore
-    private Set<Comment> comments;
-    @OneToMany(mappedBy = "owner", cascade = CascadeType.REMOVE)
-    @JsonIgnore
-    private Set<Post> posts;
 
-    public User() {
+    public UserDTO() {
     }
 
-    public User(String username, String password, String email,
-                String firstName, String lastName, String role) {
+    public UserDTO(String username, String password, String email, String firstName, String lastName, String role) {
         this.username = username;
         this.password = password;
         this.email = email;
@@ -93,21 +80,5 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
-    }
-
-    public Set<Comment> getComments() {
-        return comments;
-    }
-
-    public void setComments(Set<Comment> comments) {
-        this.comments = comments;
-    }
-
-    public Set<Post> getPosts() {
-        return posts;
-    }
-
-    public void setPosts(Set<Post> posts) {
-        this.posts = posts;
     }
 }
