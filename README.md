@@ -50,7 +50,7 @@
     Response data is created user or null if any error (check code and message).
 
         {
-            "code": 200,
+            "code": "200",
             "message": "Success",
             "data": {
                 "username": username_created,
@@ -72,7 +72,7 @@
     Response data is token or null if any error (check code and message).
 
         {
-            "code": 200,
+            "code": "200",
             "message": "Success",
             "data": created_token
         }
@@ -90,7 +90,7 @@
     Response data can be comment found or null, list of comments of empty list. Notice that list of comments return is paged.
 
         {
-            "code": 200,
+            "code": "200",
             "message": "Success",
             "data": {
                 "id": id_of_comment,
@@ -135,7 +135,7 @@
     Response data can be post found or null, list of posts of empty list. Notice that list of posts return is paged.
 
         {
-            "code": 200,
+            "code": "200",
             "message": "Success",
             "data": {
                 "id": id_of_post,
