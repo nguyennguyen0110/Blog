@@ -1,27 +1,27 @@
 package fa.training.blog.exception;
 
 public class MyException extends RuntimeException{
-    private String errCode;
-    private String errMsg;
+    private String code;
+    private String message;
 
-    public MyException(String errCode, String errMsg) {
-        this.errCode = errCode;
-        this.errMsg = errMsg;
+    public MyException(String code, String message) {
+        this.code = code;
+        this.message = message;
     }
 
-    public String getErrCode() {
-        return errCode;
+    public String getCode() {
+        return code;
     }
 
-    public void setErrCode(String errCode) {
-        this.errCode = errCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 
-    public String getErrMsg() {
-        return errMsg;
+    public String getMessage() {
+        return message;
     }
 
-    public void setErrMsg(String errMsg) {
-        this.errMsg = errMsg;
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

@@ -56,7 +56,7 @@ public class UserController {
             return new ResponseObject(userService.editUser(userDTO));
         }
         else {
-            return new ResponseObject("400", result.getFieldError().toString());
+            return new ResponseObject("406", result.getFieldError().toString());
         }
     }
 

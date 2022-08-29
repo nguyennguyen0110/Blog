@@ -12,8 +12,6 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -34,7 +32,14 @@ public class PostServiceImpl implements PostService {
     private ModelMapper modelMapper;
 
     @Override
-    public PostDTO createPost(PostDTO postDTO) {
+    public PostDTO createPost(PostDTO postDTO, String username) {
+        // Set owner
+        UserDTO owner = userService.findUserByUsername(username);
+        if (owner == null) {
+            throw new MyException("400", "Username not found");
+        }
+        postDTO.setOwner(owner);
+
         // Set ID using UUID
         UUID id = UUID.randomUUID();
         postDTO.setId(id.toString());
@@ -42,12 +47,6 @@ public class PostServiceImpl implements PostService {
         // Set view and modify date
         postDTO.setModifyDate(LocalDateTime.now());
         postDTO.setView(0);
-
-        // Set owner
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        UserDTO owner = userService.findUserByUsername(username);
-        postDTO.setOwner(owner);
 
         Post savedPost = postRepository.save(modelMapper.map(postDTO, Post.class));
         return modelMapper.map(savedPost, PostDTO.class);
@@ -99,6 +98,7 @@ public class PostServiceImpl implements PostService {
         Optional<Post> post = postRepository.findById(id);
         if (post.isPresent()) {
             Post postFromDB = post.get();
+            // Update post has one more view
             postFromDB.setView(postFromDB.getView() + 1);
             PostDTO responsePost = modelMapper.map(postFromDB, PostDTO.class);
             postRepository.saveAndFlush(postFromDB);

@@ -21,7 +21,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 public class UserServiceImplTest {
@@ -33,17 +33,22 @@ public class UserServiceImplTest {
     private ModelMapper modelMapper;
     @Spy
     private BCryptPasswordEncoder passwordEncoder;
+
     private static UserDTO userDTO;
-    private static List<UserDTO> userDTOS = new ArrayList<>();
+    private static List<UserDTO> userDTOS;
+    private static List<User> users;
     private User user;
-    private List<User> users = new ArrayList<>();
     private static Pageable pageable;
 
     @BeforeAll
     public static void setup() {
         userDTO = new UserDTO("tester", "test12345678", "tester@demo.com",
                 "Test", "Ter", "ROLE_ADMIN");
+
+        userDTOS = new ArrayList<>();
         userDTOS.add(userDTO);
+
+        users = new ArrayList<>();
 
         pageable = PageRequest.of(0, 10, Sort.by("role").and(Sort.by("username")));
     }
@@ -65,16 +70,15 @@ public class UserServiceImplTest {
     @Order(1)
     void createUserSuccess() {
         // Given
+        given(userRepository.findById(userDTO.getUsername())).willReturn(Optional.empty());
+        given(userRepository.findByEmail(userDTO.getEmail())).willReturn(null);
+        given(userRepository.save(any(User.class))).willReturn(user);
 
         // when
-        when(userRepository.findById(userDTO.getUsername())).thenReturn(Optional.empty());
-        when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(null);
-        when(userRepository.save(any(User.class))).thenReturn(user);
-
-        // then
         UserDTO actual = userService.createUser(userDTO);
         UserDTO expected = modelMapper.map(user, UserDTO.class);
 
+        // then
         assertEquals(expected.getUsername(), actual.getUsername());
         assertEquals(expected.getPassword(), actual.getPassword());
         assertEquals(expected.getEmail(), actual.getEmail());
@@ -86,13 +90,14 @@ public class UserServiceImplTest {
     @Order(2)
     void createUserThrowExceptionUsernameExisted() {
         // Given
+        given(userRepository.findById(userDTO.getUsername())).willReturn(Optional.of(user));
 
         // when
-        when(userRepository.findById(userDTO.getUsername())).thenReturn(Optional.of(user));
         MyException exception = assertThrows(MyException.class, () -> userService.createUser(userDTO));
 
         // then
-        assertEquals("Username existed", exception.getErrMsg());
+        assertEquals("Username existed", exception.getMessage());
+        assertEquals("405", exception.getCode());
     }
 
     @Test
@@ -100,14 +105,15 @@ public class UserServiceImplTest {
     @Order(3)
     void createUserThrowExceptionEmailUsed() {
         // Given
+        given(userRepository.findById(userDTO.getUsername())).willReturn(Optional.empty());
+        given(userRepository.findByEmail(userDTO.getEmail())).willReturn(user);
 
         // when
-        when(userRepository.findById(userDTO.getUsername())).thenReturn(Optional.empty());
-        when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(user);
         MyException exception = assertThrows(MyException.class, () -> userService.createUser(userDTO));
 
         // then
-        assertEquals("Email used", exception.getErrMsg());
+        assertEquals("Email used", exception.getMessage());
+        assertEquals("405", exception.getCode());
     }
 
     @Test
@@ -115,14 +121,15 @@ public class UserServiceImplTest {
     @Order(4)
     void deleteUserByUsernameSuccess() {
         // Given
+        String username = userDTO.getUsername();
+
+        given(userRepository.findById(username)).willReturn(Optional.of(user));
 
         // when
-        when(userRepository.findById(userDTO.getUsername())).thenReturn(Optional.of(user));
-
-        // then
-        UserDTO actual = userService.deleteUserByUsername(userDTO.getUsername());
+        UserDTO actual = userService.deleteUserByUsername(username);
         UserDTO expected = modelMapper.map(user, UserDTO.class);
 
+        // then
         assertEquals(expected.getUsername(), actual.getUsername());
         assertEquals(expected.getPassword(), actual.getPassword());
         assertEquals(expected.getEmail(), actual.getEmail());
@@ -134,13 +141,16 @@ public class UserServiceImplTest {
     @Order(5)
     void deleteUserByUsernameThrowExceptionUsernameNotFound() {
         // Given
+        String username = userDTO.getUsername();
+
+        given(userRepository.findById(username)).willReturn(Optional.empty());
 
         // when
-        when(userRepository.findById(userDTO.getUsername())).thenReturn(Optional.empty());
-        MyException exception = assertThrows(MyException.class, () -> userService.deleteUserByUsername(userDTO.getUsername()));
+        MyException exception = assertThrows(MyException.class, () -> userService.deleteUserByUsername(username));
 
         // then
-        assertEquals("Username not found", exception.getErrMsg());
+        assertEquals("Username not found", exception.getMessage());
+        assertEquals("400", exception.getCode());
     }
 
     @Test
@@ -151,14 +161,15 @@ public class UserServiceImplTest {
         User userInDB = new User("tester", "test12345678", "tester@demo.com",
                 "Test", "Terrrrrrrrrrrrrrrrrrrrrrrr", "ROLE_ADMIN");
 
-        // when
-        when(userRepository.findById(userDTO.getUsername())).thenReturn(Optional.of(userInDB));
-        when(userRepository.saveAndFlush(any(User.class))).thenReturn(user);
 
-        // then
+        given(userRepository.findById(userDTO.getUsername())).willReturn(Optional.of(userInDB));
+        given(userRepository.saveAndFlush(any(User.class))).willReturn(user);
+
+        // when
         UserDTO actual = userService.editUser(userDTO);
         UserDTO expected = modelMapper.map(user, UserDTO.class);
 
+        // then
         assertEquals(expected.getUsername(), actual.getUsername());
         assertEquals(expected.getPassword(), actual.getPassword());
         assertEquals(expected.getEmail(), actual.getEmail());
@@ -170,13 +181,14 @@ public class UserServiceImplTest {
     @Order(7)
     void editUserThrowExceptionUsernameNotFound() {
         // Given
+        given(userRepository.findById(userDTO.getUsername())).willReturn(Optional.empty());
 
         // when
-        when(userRepository.findById(userDTO.getUsername())).thenReturn(Optional.empty());
         MyException exception = assertThrows(MyException.class, () -> userService.editUser(userDTO));
 
         // then
-        assertEquals("Username not found", exception.getErrMsg());
+        assertEquals("Username not found", exception.getMessage());
+        assertEquals("400", exception.getCode());
     }
 
     @Test
@@ -187,13 +199,15 @@ public class UserServiceImplTest {
         User userInDB = new User("tester", "test12345678", "testerrrrrrrrrrrrrrrrr@demo.com",
                 "Test", "Ter", "ROLE_ADMIN");
 
+        given(userRepository.findById(userDTO.getUsername())).willReturn(Optional.of(userInDB));
+        given(userRepository.findByEmail(userDTO.getEmail())).willReturn(user);
+
         // when
-        when(userRepository.findById(userDTO.getUsername())).thenReturn(Optional.of(userInDB));
-        when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(user);
         MyException exception = assertThrows(MyException.class, () -> userService.editUser(userDTO));
 
         // then
-        assertEquals("Email used", exception.getErrMsg());
+        assertEquals("Email used", exception.getMessage());
+        assertEquals("405", exception.getCode());
     }
 
     @Test
@@ -202,13 +216,12 @@ public class UserServiceImplTest {
     void findAllUser() {
         // Given
         Page<User> page = new PageImpl<>(users);
+        given(userRepository.findAll(pageable)).willReturn(page);
 
         // when
-        when(userRepository.findAll(pageable)).thenReturn(page);
-
-        // then
         List<UserDTO> actual = userService.findAllUser(pageable);
 
+        // then
         assertEquals(userDTOS.get(0).getUsername(), actual.get(0).getUsername());
         assertEquals(userDTOS.get(0).getClass(), actual.get(0).getClass());
         assertEquals(userDTOS.size(), actual.size());
@@ -221,12 +234,12 @@ public class UserServiceImplTest {
         // Given
         Page<User> page = new PageImpl<>(new ArrayList<>());
 
-        // when
-        when(userRepository.findAll(pageable)).thenReturn(page);
+        given(userRepository.findAll(pageable)).willReturn(page);
 
-        // then
+        // when
         List<UserDTO> actual = userService.findAllUser(pageable);
 
+        // then
         assertEquals(0, actual.size());
     }
 
@@ -235,15 +248,16 @@ public class UserServiceImplTest {
     @Order(11)
     void findUserByFirstName() {
         // Given
+        String firstName = userDTO.getFirstName();
+
+        given(userRepository.findByFirstNameIgnoreCaseContains(firstName, pageable)).willReturn(users);
 
         // when
-        when(userRepository.findByFirstNameIgnoreCaseContains(userDTO.getFirstName(), pageable)).thenReturn(users);
-
-        // then
-        List<UserDTO> actual = userService.findUserByFirstName(userDTO.getFirstName(), pageable);
+        List<UserDTO> actual = userService.findUserByFirstName(firstName, pageable);
         UserDTO expectedUser = modelMapper.map(user, UserDTO.class);
         List<UserDTO> expected = List.of(expectedUser);
 
+        // then
         assertEquals(expected.get(0).getUsername(), actual.get(0).getUsername());
         assertEquals(expected.get(0).getPassword(), actual.get(0).getPassword());
         assertEquals(expected.size(), actual.size());
@@ -254,15 +268,16 @@ public class UserServiceImplTest {
     @Order(12)
     void findUserByLastName() {
         // Given
+        String lastName = userDTO.getLastName();
+
+        given(userRepository.findByLastNameIgnoreCaseContains(lastName, pageable)).willReturn(users);
 
         // when
-        when(userRepository.findByLastNameIgnoreCaseContains(userDTO.getLastName(), pageable)).thenReturn(users);
-
-        // then
-        List<UserDTO> actual = userService.findUserByLastName(userDTO.getLastName(), pageable);
+        List<UserDTO> actual = userService.findUserByLastName(lastName, pageable);
         UserDTO expectedUser = modelMapper.map(user, UserDTO.class);
         List<UserDTO> expected = List.of(expectedUser);
 
+        // then
         assertEquals(expected.get(0).getUsername(), actual.get(0).getUsername());
         assertEquals(expected.get(0).getPassword(), actual.get(0).getPassword());
         assertEquals(expected.size(), actual.size());
@@ -273,15 +288,18 @@ public class UserServiceImplTest {
     @Order(13)
     void findUserByFirstNameAndLastName() {
         // Given
+        String firstName = userDTO.getFirstName();
+        String lastName =  userDTO.getLastName();
+
+        given(userRepository.findByFirstNameIgnoreCaseContainsAndLastNameIgnoreCaseContains(firstName, lastName, pageable))
+                .willReturn(users);
 
         // when
-        when(userRepository.findByFirstNameIgnoreCaseContainsAndLastNameIgnoreCaseContains(userDTO.getFirstName(), userDTO.getLastName(), pageable)).thenReturn(users);
-
-        // then
-        List<UserDTO> actual = userService.findUserByFirstNameAndLastName(userDTO.getFirstName(), userDTO.getLastName(), pageable);
+        List<UserDTO> actual = userService.findUserByFirstNameAndLastName(firstName, lastName, pageable);
         UserDTO expectedUser = modelMapper.map(user, UserDTO.class);
         List<UserDTO> expected = List.of(expectedUser);
 
+        // then
         assertEquals(expected.get(0).getUsername(), actual.get(0).getUsername());
         assertEquals(expected.get(0).getPassword(), actual.get(0).getPassword());
         assertEquals(expected.size(), actual.size());

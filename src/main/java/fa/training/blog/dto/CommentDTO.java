@@ -1,7 +1,6 @@
 package fa.training.blog.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonIncludeProperties;
 
 import javax.validation.constraints.NotBlank;
@@ -13,7 +12,7 @@ public class CommentDTO {
     private String content;
     private LocalDateTime createDate;
     private LocalDateTime modifyDate;
-    private Boolean deleted;
+    private boolean deleted;
     @JsonIgnoreProperties({"email", "password", "role"})
     private UserDTO owner;
     @JsonIncludeProperties({"id", "title"})

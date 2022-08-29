@@ -45,7 +45,7 @@ public class WebSecurityConfig{
                 .antMatchers(HttpMethod.GET, "/post", "/comment").permitAll()
                 .antMatchers("/user*", "/user/**").hasRole("ADMIN")
                 .antMatchers("/post*", "/post/**").hasRole("ADMIN")
-                .antMatchers("/comment*").hasAnyRole("USER", "ADMIN")
+                .antMatchers("/comment*", "/comment/**").hasAnyRole("USER", "ADMIN")
                 .anyRequest().authenticated()
                 // Add exception handler for authenticate and access process. Because exceptions throw in these processes
                 // cannot be caught by our controller (which will be sent to our "MyExceptionHandler" class

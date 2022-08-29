@@ -35,27 +35,24 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             try {
                 username = jwtTokenUtil.getUsernameFromToken(jwtToken);
             } catch (IllegalArgumentException e) {
-                throw new MyException("401", "Unable to get JWT Token");
+                throw new MyException("404", "Unable to get JWT Token");
             } catch (ExpiredJwtException e) {
-                throw new MyException("401", "JWT Token has expired");
+                throw new MyException("404", "JWT Token has expired");
             }
         }
 
-        //Once we get the token validate it.
+        // Once get the token validate it
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
             UserDetails userDetails = this.jwtUserDetailsService.loadUserByUsername(username);
 
             // if token is valid configure Spring Security to manually set authentication
             if (jwtTokenUtil.validateToken(jwtToken, userDetails)) {
-
-                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                usernamePasswordAuthenticationToken
-                        .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                // After setting the Authentication in the context, we specify
-                // that the current user is authenticated. So it passes the Spring Security Configurations successfully.
-                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+                UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(userDetails,
+                        null, userDetails.getAuthorities());
+                token.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                // After setting the Authentication in the context, we specify that the current user
+                // is authenticated. So it passes the Spring Security Configurations successfully.
+                SecurityContextHolder.getContext().setAuthentication(token);
             }
         }
 

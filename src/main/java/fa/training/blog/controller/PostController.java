@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,10 +51,13 @@ public class PostController {
     @PostMapping
     public ResponseObject createPost(@RequestBody @Valid PostDTO postDTO, BindingResult result){
         if(!result.hasErrors()){
-            return new ResponseObject(postService.createPost(postDTO));
+            // User creating post is owner
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            return new ResponseObject(postService.createPost(postDTO, username));
         }
         else {
-            return new ResponseObject("400", result.getFieldError().toString());
+            return new ResponseObject("406", result.getFieldError().toString());
         }
     }
 
@@ -62,7 +67,7 @@ public class PostController {
             return new ResponseObject(postService.editPost(postDTO));
         }
         else {
-            return new ResponseObject("400", result.getFieldError().toString());
+            return new ResponseObject("406", result.getFieldError().toString());
         }
     }
 

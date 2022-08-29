@@ -35,14 +35,14 @@ public class UserServiceImpl implements UserService {
         if(userInDatabase == null){
             userInDatabase = findUserByEmail(userDTO.getEmail());
             if (userInDatabase != null){
-                throw new MyException("400", "Email used");
+                throw new MyException("405", "Email used");
             }
             String encodedPassword = passwordEncoder().encode(userDTO.getPassword());
             userDTO.setPassword(encodedPassword);
             User savedUser = userRepository.save(modelMapper.map(userDTO, User.class));
             return modelMapper.map(savedUser, UserDTO.class);
         } else {
-            throw new MyException("400", "Username existed");
+            throw new MyException("405", "Username existed");
         }
     }
 
@@ -65,7 +65,7 @@ public class UserServiceImpl implements UserService {
             if (!userDTO.getEmail().equals(userToEdit.getEmail())) {
                 UserDTO emailUsed = findUserByEmail(userDTO.getEmail());
                 if (emailUsed != null){
-                    throw new MyException("400", "Email used");
+                    throw new MyException("405", "Email used");
                 }
             }
             String encodedPassword = passwordEncoder().encode(userDTO.getPassword());

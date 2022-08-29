@@ -15,7 +15,7 @@ import java.util.Map;
 @Component
 public class JwtTokenUtil {
     public static final long JWT_TOKEN_VALID_TIME = 5*60*60;
-    private String secret = Constant.SECRET;
+    private final String secret = Constant.SECRET;
 
     public String getUsernameFromToken(String token) {
         return getClaimFromToken(token, Claims::getSubject);

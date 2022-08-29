@@ -1,12 +1,13 @@
 package fa.training.blog.controller;
 
+import fa.training.blog.model.ResponseObject;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class HelloController {
     @GetMapping
-    public String hello() {
-        return "Hello Spring Boot Restful API";
+    public ResponseObject hello() {
+        return new ResponseObject("Hello Spring Boot Restful API");
     }
 }

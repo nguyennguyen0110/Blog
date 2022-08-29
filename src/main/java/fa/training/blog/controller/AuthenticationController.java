@@ -32,6 +32,7 @@ public class AuthenticationController {
 
     private void authenticate(String username, String password){
         try {
+            // Authenticate sign in username and password with user in database
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
         } catch (DisabledException e) {
             throw new MyException("401", "User disabled");
@@ -46,14 +47,15 @@ public class AuthenticationController {
             return new ResponseObject(userService.createUser(userDTO));
         }
         else {
-            return new ResponseObject("400", result.getFieldError().toString());
+            return new ResponseObject("406", result.getFieldError().toString());
         }
     }
 
     @PostMapping("/signin")
     public ResponseObject createAuthenticationToken(@RequestBody UserDTO userDTO){
-        // First authenticate user
+        // First authenticate sign in information with user in database
         authenticate(userDTO.getUsername(), userDTO.getPassword());
+
         // then generate token and return
         final UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(userDTO.getUsername());
         final String token = jwtTokenUtil.generateToken(userDetails);

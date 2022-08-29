@@ -15,10 +15,6 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -41,7 +37,7 @@ public class CommentServiceImpl implements CommentService {
     private ModelMapper modelMapper;
 
     @Override
-    public CommentDTO createComment(CommentDTO commentDTO, String postID) {
+    public CommentDTO createComment(CommentDTO commentDTO, String postID, String username) {
         // Set post
         PostDTO postDTO = postService.findPostByID(postID);
         if (postDTO == null) {
@@ -49,29 +45,28 @@ public class CommentServiceImpl implements CommentService {
         }
         commentDTO.setPost(postDTO);
 
+        // Set owner
+        UserDTO owner = userService.findUserByUsername(username);
+        if (owner == null) {
+            throw new MyException("400", "Username not found");
+        }
+        commentDTO.setOwner(owner);
+
         // Set ID using UUID
         UUID id = UUID.randomUUID();
         commentDTO.setId(id.toString());
 
         commentDTO.setDeleted(false);
 
-        // Set owner
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        UserDTO owner = userService.findUserByUsername(username);
-        commentDTO.setOwner(owner);
-
         Comment savedComment = commentRepository.save(modelMapper.map(commentDTO, Comment.class));
         return modelMapper.map(savedComment, CommentDTO.class);
     }
 
     @Override
-    public CommentDTO editComment(CommentDTO commentDTO) {
-        CommentDTO commentToEdit = findCommentByID(commentDTO.getId());
+    public CommentDTO editComment(CommentDTO commentDTO, String username) {
+        CommentDTO commentToEdit = findCommentByIDAndDeleted(commentDTO.getId());
         if (commentToEdit != null) {
             // Just owner can edit
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String username = authentication.getName();
             if (!username.equals(commentToEdit.getOwner().getUsername())) {
                 throw new MyException("403", "Just owner can edit comment");
             }
@@ -85,15 +80,18 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    public CommentDTO deleteComment(String id) {
-        CommentDTO commentToDelete = findCommentByID(id);
+    public CommentDTO deleteComment(String id, String username, boolean isAdmin) {
+        CommentDTO commentToDelete;
+        // Admin can get comment even it is soft-deleted
+        if (isAdmin) {
+            commentToDelete = findCommentByID(id);
+        } else {
+            commentToDelete = findCommentByIDAndDeleted(id);
+        }
         if (commentToDelete != null) {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String username = authentication.getName();
-            Optional<? extends GrantedAuthority> authority = authentication.getAuthorities().stream().findFirst();
             // If user is owner (either role admin or role user)
             if (username.equals(commentToDelete.getOwner().getUsername())) {
-                // If comment is soft-deleted and owner has role admin (because just admin can get soft-deleted comment)
+                // If comment is soft-deleted and owner has role admin (only admin can get soft-deleted comment)
                 if (commentToDelete.isDeleted()) {
                     commentRepository.deleteById(id);
                     return commentToDelete;
@@ -103,7 +101,7 @@ public class CommentServiceImpl implements CommentService {
                 Comment deletedComment = commentRepository.saveAndFlush(modelMapper.map(commentToDelete, Comment.class));
                 return modelMapper.map(deletedComment, CommentDTO.class);
             // else if user is not owner but has role admin
-            } else if ("ROLE_ADMIN".equals(authority.get().getAuthority())) {
+            } else if (isAdmin) {
                 // If comment is soft-deleted or "Deleted by admin" then delete it for real
                 if (commentToDelete.isDeleted() || "Deleted by admin".equals(commentToDelete.getContent())) {
                     commentRepository.deleteById(id);
@@ -124,42 +122,29 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public CommentDTO findCommentByID(String id) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication instanceof AnonymousAuthenticationToken) {
-            Comment comment = commentRepository.findByIdAndDeleted(id, false);
-            if (comment == null) {
-                return null;
-            }
-            return modelMapper.map(comment, CommentDTO.class);
+        Optional<Comment> comment = commentRepository.findById(id);
+        return comment.map(value -> modelMapper.map(value, CommentDTO.class)).orElse(null);
+    }
+
+    @Override
+    public CommentDTO findCommentByIDAndDeleted(String id) {
+        Comment comment = commentRepository.findByIdAndDeleted(id, false);
+        if (comment == null) {
+            return null;
         }
-        Optional<? extends GrantedAuthority> authority = authentication.getAuthorities().stream().findFirst();
-        if ("ROLE_ADMIN".equals(authority.get().getAuthority())) {
-            Optional<Comment> comment = commentRepository.findById(id);
-            return comment.map(value -> modelMapper.map(value, CommentDTO.class)).orElse(null);
-        } else {
-            Comment comment = commentRepository.findByIdAndDeleted(id, false);
-            if (comment == null) {
-                return null;
-            }
-            return modelMapper.map(comment, CommentDTO.class);
-        }
+        return modelMapper.map(comment, CommentDTO.class);
     }
 
     @Override
     public List<CommentDTO> findAllComment(Pageable pageable) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication instanceof AnonymousAuthenticationToken) {
-            List<Comment> comments = commentRepository.findByDeleted(false, pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
-        }
-        Optional<? extends GrantedAuthority> authority = authentication.getAuthorities().stream().findFirst();
-        if ("ROLE_ADMIN".equals(authority.get().getAuthority())) {
-            Page<Comment> comments = commentRepository.findAll(pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
-        } else {
-            List<Comment> comments = commentRepository.findByDeleted(false, pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
-        }
+        Page<Comment> comments = commentRepository.findAll(pageable);
+        return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CommentDTO> findCommentByDeleted(Pageable pageable) {
+        List<Comment> comments = commentRepository.findByDeleted(false, pageable);
+        return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
     }
 
     @Override
@@ -168,19 +153,18 @@ public class CommentServiceImpl implements CommentService {
         if (owner == null) {
             throw new MyException("400", "Username not found");
         }
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication instanceof AnonymousAuthenticationToken) {
-            List<Comment> comments = commentRepository.findByOwnerAndDeleted(modelMapper.map(owner, User.class), false, pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
+        List<Comment> comments = commentRepository.findByOwner(modelMapper.map(owner, User.class), pageable);
+        return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CommentDTO> findCommentByOwnerAndDeleted(String username, Pageable pageable) {
+        UserDTO owner = userService.findUserByUsername(username);
+        if (owner == null) {
+            throw new MyException("400", "Username not found");
         }
-        Optional<? extends GrantedAuthority> authority = authentication.getAuthorities().stream().findFirst();
-        if ("ROLE_ADMIN".equals(authority.get().getAuthority())) {
-            List<Comment> comments = commentRepository.findByOwner(modelMapper.map(owner, User.class), pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
-        } else {
-            List<Comment> comments = commentRepository.findByOwnerAndDeleted(modelMapper.map(owner, User.class), false, pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
-        }
+        List<Comment> comments = commentRepository.findByOwnerAndDeleted(modelMapper.map(owner, User.class), false, pageable);
+        return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
     }
 
     @Override
@@ -189,37 +173,35 @@ public class CommentServiceImpl implements CommentService {
         if (postDTO == null) {
             throw new MyException("400", "Post not found");
         }
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication instanceof AnonymousAuthenticationToken) {
-            List<Comment> comments = commentRepository.findByPostAndDeleted(modelMapper.map(postDTO, Post.class), false, pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
+        List<Comment> comments = commentRepository.findByPost(modelMapper.map(postDTO, Post.class), pageable);
+        return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CommentDTO> findCommentByPostAndDeleted(String postID, Pageable pageable) {
+        PostDTO postDTO = postService.findPostByID(postID);
+        if (postDTO == null) {
+            throw new MyException("400", "Post not found");
         }
-        Optional<? extends GrantedAuthority> authority = authentication.getAuthorities().stream().findFirst();
-        if ("ROLE_ADMIN".equals(authority.get().getAuthority())) {
-            List<Comment> comments = commentRepository.findByPost(modelMapper.map(postDTO, Post.class), pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
-        } else {
-            List<Comment> comments = commentRepository.findByPostAndDeleted(modelMapper.map(postDTO, Post.class), false, pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
-        }
+        List<Comment> comments = commentRepository.findByPostAndDeleted(modelMapper.map(postDTO, Post.class), false, pageable);
+        return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
     }
 
     @Override
     public List<CommentDTO> findCommentByCreateDate(LocalDate createDate, Pageable pageable) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        // Because create date save as LocalDateTime so need to find comments between start of day to end of day
         LocalDateTime start = createDate.atStartOfDay();
         LocalDateTime end = createDate.atTime(LocalTime.MAX);
-        if (authentication instanceof AnonymousAuthenticationToken) {
-            List<Comment> comments = commentRepository.findByDeletedAndCreateDateBetween(false, start, end, pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
-        }
-        Optional<? extends GrantedAuthority> authority = authentication.getAuthorities().stream().findFirst();
-        if ("ROLE_ADMIN".equals(authority.get().getAuthority())) {
-            List<Comment> comments = commentRepository.findByCreateDateBetween(start, end, pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
-        } else {
-            List<Comment> comments = commentRepository.findByDeletedAndCreateDateBetween(false, start, end, pageable);
-            return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
-        }
+        List<Comment> comments = commentRepository.findByCreateDateBetween(start, end, pageable);
+        return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CommentDTO> findCommentByCreateDateAndDeleted(LocalDate createDate, Pageable pageable) {
+        // Because create date save as LocalDateTime so need to find comments between start of day to end of day
+        LocalDateTime start = createDate.atStartOfDay();
+        LocalDateTime end = createDate.atTime(LocalTime.MAX);
+        List<Comment> comments = commentRepository.findByDeletedAndCreateDateBetween(false, start, end, pageable);
+        return comments.stream().map(comment -> modelMapper.map(comment, CommentDTO.class)).collect(Collectors.toList());
     }
 }
