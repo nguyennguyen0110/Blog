@@ -86,8 +86,9 @@
     - createDate: date comment created format YYYY-MM-DD (to find by)
     - page: page want to get, default 0 (ex: 1 to return page 1, 5 to return page 5)
     - size: number of users in a page, default 10
+    - *If no param provided, will find all comment and return first page (page 0) with size 10.*
 
-    Response data can be comment found or null, list of comments of empty list. Notice that list of comments return is paged and sorted (by post ascending and by create date descending).
+    Response data can be comment found or null, list of comments or empty list. Notice that list of comments return is paged and sorted (by post ascending and by create date descending).
 
         {
             "code": "200",
@@ -131,8 +132,9 @@
     - title: title of post (to find by)
     - page: page want to get, default 0 (ex: 1 to return page 1, 5 to return page 5)
     - size: number of users in a page, default 10
+    - *If no param provided, will find all post and return first page (page 0) with size 10.*
 
-    Response data can be post found or null, list of posts of empty list. Notice that list of posts return is paged and sorted by create date descending.
+    Response data can be post found or null, list of posts or empty list. Notice that list of posts return is paged and sorted by create date descending.
 
         {
             "code": "200",
@@ -177,7 +179,7 @@
     - *If both firstName and lastName provided, will find user by first name and last name*
     - *If no param provided, will find all user and return first page (page 0) with size 10.*
     
-    Response data can be user found or null, list of users of empty list. Notice that list of users return is paged and sorted (by role and by username ascending).
+    Response data can be user found or null, list of users or empty list. Notice that list of users return is paged and sorted (by role and by username ascending).
   - **PUT:** request edit a user. Response data is edited user or null if any error (check code and message). User in request body like in "/api/signup".
   - **DELETE:** request delete a user by giving username in path variable "/{username}". Response data is deleted user or null if not found.
 
