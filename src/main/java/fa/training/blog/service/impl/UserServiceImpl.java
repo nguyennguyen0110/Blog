@@ -31,19 +31,17 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDTO createUser(UserDTO userDTO) {
-        UserDTO userInDatabase = findUserByUsername(userDTO.getUsername());
-        if(userInDatabase == null){
-            userInDatabase = findUserByEmail(userDTO.getEmail());
-            if (userInDatabase != null){
-                throw new MyException("405", "Email used");
-            }
-            String encodedPassword = passwordEncoder().encode(userDTO.getPassword());
-            userDTO.setPassword(encodedPassword);
-            User savedUser = userRepository.save(modelMapper.map(userDTO, User.class));
-            return modelMapper.map(savedUser, UserDTO.class);
-        } else {
+        if (userRepository.existsById(userDTO.getUsername())) {
             throw new MyException("405", "Username existed");
         }
+        UserDTO userInDatabase = findUserByEmail(userDTO.getEmail());
+        if (userInDatabase != null){
+            throw new MyException("405", "Email used");
+        }
+        String encodedPassword = passwordEncoder().encode(userDTO.getPassword());
+        userDTO.setPassword(encodedPassword);
+        User savedUser = userRepository.save(modelMapper.map(userDTO, User.class));
+        return modelMapper.map(savedUser, UserDTO.class);
     }
 
     @Override

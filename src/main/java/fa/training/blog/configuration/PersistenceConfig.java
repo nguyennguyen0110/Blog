@@ -1,4 +1,4 @@
-package fa.training.blog.exception.configuration;
+package fa.training.blog.configuration;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;

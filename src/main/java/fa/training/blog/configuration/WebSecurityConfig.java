@@ -1,4 +1,4 @@
-package fa.training.blog.exception.configuration;
+package fa.training.blog.configuration;
 
 import fa.training.blog.security.JwtAccessDenyHandler;
 import fa.training.blog.security.JwtAuthenticationEntryPoint;
